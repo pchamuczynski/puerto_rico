@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, IntEnum
 from operator import attrgetter
 import random
 
@@ -77,22 +77,22 @@ class Building:
        return str(self) 
 
 class Crop:
-    class CropType(Enum):
-        CORN = 1
-        INDIGO = 2
-        SUGAR = 3
-        TOBACCO = 4
-        COFFEE = 5
+    class CropType(IntEnum):
+        CORN = 0
+        INDIGO = 1
+        SUGAR = 2
+        TOBACCO = 3
+        COFFEE = 4
         
         def __str__(self) -> str:
             return f"{self.name}"
     
     def __init__(self, type):
         self.type = type
-        self.value = self.type.value - 1
+        self.price = int(self.type)
         
     def __str__(self) -> str:
-        return f"{self.type}(value: {self.value})"
+        return f"{self.type}(price: {self.price})"
         
 
 class Plantation:
@@ -188,8 +188,10 @@ class City:
         if len(self.market) == 0:
             result += "\tEmpty\n"
         else:
+            result += "\t["
             for crop in self.market:
-                result += "\t" + str(crop) + "\n"
+                result += str(crop) + " "
+            result += "]\n"
         
         result += "Available points: " + str(self.available_points) + "\n"
         result += "Available workers: " + str(self.available_workers) + " + " + str(self.total_workers) + " to come"
@@ -262,11 +264,11 @@ class City:
         
     def __init_crops(self):
         return {
-            Crop(Crop.CropType.CORN): 10,
-            Crop(Crop.CropType.INDIGO): 12,
-            Crop(Crop.CropType.SUGAR): 11,
-            Crop(Crop.CropType.TOBACCO): 9,
-            Crop(Crop.CropType.COFFEE): 8,
+            Crop.CropType.CORN: 10,
+            Crop.CropType.INDIGO: 12,
+            Crop.CropType.SUGAR: 11,
+            Crop.CropType.TOBACCO: 9,
+            Crop.CropType.COFFEE: 8,
         }
         
     def __init_total_points(self, number_of_players):
@@ -298,11 +300,11 @@ class PlayerBoard:
         self.buildings = {}
         self.workers = 0
         self.crops = {
-            Plantation.PlantationType.CORN: 0, 
-            Plantation.PlantationType.INDIGO: 0, 
-            Plantation.PlantationType.SUGAR: 0, 
-            Plantation.PlantationType.TOBACCO: 0, 
-            Plantation.PlantationType.COFFEE: 0
+            Crop.CropType.CORN: 0, 
+            Crop.CropType.INDIGO: 0, 
+            Crop.CropType.SUGAR: 0, 
+            Crop.CropType.TOBACCO: 0, 
+            Crop.CropType.COFFEE: 0
         }
         self.export_points = 0
         
@@ -348,6 +350,26 @@ class PlayerBoard:
             if building.type == building_type and self.buildings[building] > 0:
                 return True
         return False
+    
+    def production_potential(self):
+        corn_production = sum(1 for plantation in self.plantations if plantation.type == Plantation.PlantationType.CORN and plantation.active)
+        active_indigo_plantations = sum(1 for plantation in self.plantations if plantation.type == Plantation.PlantationType.INDIGO and plantation.active)
+        active_sugar_plantations = sum(1 for plantation in self.plantations if plantation.type == Plantation.PlantationType.SUGAR and plantation.active)
+        active_tobacco_plantations = sum(1 for plantation in self.plantations if plantation.type == Plantation.PlantationType.TOBACCO and plantation.active)
+        active_coffee_plantations = sum(1 for plantation in self.plantations if plantation.type == Plantation.PlantationType.COFFEE and plantation.active)
+        
+        indigo_production_buildings = sum(workers for building, workers in self.buildings.items() if building.type == Building.BuildingType.SMALL_INDIGO_PLANT or building.type == Building.BuildingType.LARGE_INDIGO_PLANT)
+        sugar_production_buildings = sum(workers for building, workers in self.buildings.items() if building.type == Building.BuildingType.SMALL_SUGAR_MILL or building.type == Building.BuildingType.LARGE_SUGAR_MILL)
+        tobacco_production_buildings = sum(workers for building, workers in self.buildings.items() if building.type == Building.BuildingType.TOBACCO_STORAGE)
+        coffee_production_buildings = sum(workers for building, workers in self.buildings.items() if building.type == Building.BuildingType.COFFEE_ROASTER)
+        
+        return {
+            Crop.CropType.CORN: corn_production,
+            Crop.CropType.INDIGO: min(active_indigo_plantations, indigo_production_buildings),
+            Crop.CropType.SUGAR: min(active_sugar_plantations, sugar_production_buildings),
+            Crop.CropType.TOBACCO: min(active_tobacco_plantations, tobacco_production_buildings),
+            Crop.CropType.COFFEE: min(active_coffee_plantations, coffee_production_buildings),            
+        }
     
     def clear(self):
         for plantation in self.plantations:

@@ -29,21 +29,25 @@ class RandomPlayer(AbstractPlayer):
         if len(buildings) == 0:
             return None
         selected = random.choice(list(buildings.keys()))
-        print("AI selected " + str(selected.type) + ".")
+        print("\tAI builds " + str(selected.type) + ".")
         return selected
     
     def select_plantation(self, plantations):
         if len(plantations) == 0:
             return None
         selected = random.choice(plantations)
-        print("AI selected " + str(selected) + ".")
+        print("\tAI plants " + str(selected) + ".")
         return selected
     
     def get_additional_plantation(self):
-        return random.choice([True, False])
+        choice = random.choice([True, False])
+        print("\tAI takes additional plantation: " + str(choice))
+        return choice
     
     def activate_plantation(self, plantation):
-        return random.choice([True, False])
+        choice = random.choice([True, False])
+        print("\tAI activates " + str(plantation) + ": " + str(choice))
+        return choice
     
     def assign_workers(self, plantations, buildings, workers):
         for plantation in plantations:
@@ -72,13 +76,28 @@ class RandomPlayer(AbstractPlayer):
         
         return (plantations, buildings)
         
+    def select_bonus_crop(self, bonus):
+        choice = random.choice(bonus)
+        print("\tAI selects " + str(choice) + " as bonus crop.")
+        return choice
+    
+    def select_crop_to_sale(self, crop_prices):
+        #select most expensive crop to sell
+        if len(crop_prices) == 0:
+            return None
+        choice = max(crop_prices, key=lambda crop: crop_prices[crop])
+        print(f"\tAI sells {choice} for {crop_prices[choice]} doublons.")
+        return choice
+        
 
   
 class HumanPlayer(AbstractPlayer):
-    def __init__(self):
-        pass
+    def __init__(self, name):
+        self.name = name
         
     def select_role(self, available_roles):
+        print(f"Your board: \n{self.board}")
+        
         print("Available roles: ")
         [print(str(i) + ": " + str(role)) for i, role in enumerate(available_roles)]
         role = int(input("Select a role: "))
@@ -172,4 +191,23 @@ class HumanPlayer(AbstractPlayer):
         
         return (plantations, buildings)
     
+    def select_bonus_crop(self, bonus_crops):
+        print("Available bonus crops: ")
+        [print(str(i) + ": " + str(bonus_crop)) for i, bonus_crop in enumerate(bonus_crops)]
+        bonus_crop = input("Select a bonus crop: ")
+        if bonus_crop == "":
+            return None
+        selected = bonus_crops[int(bonus_crop)]
+        print("You selected " + str(selected) + ".")
+        return selected
     
+    def select_crop_to_sale(self, crop_prices):
+        print("Available crops to sale: ")
+        [print(f"{i}: {crop} for {crop_prices[crop]} doublons") for i, crop in enumerate(crop_prices)]
+        crop = input("Select a crop to sale: ")
+        if crop == "":
+            return None
+        selected = list(crop_prices.keys())[int(crop)]
+        print(f"You selected {selected}.")
+        return selected
+        
