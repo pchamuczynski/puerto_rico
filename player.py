@@ -134,8 +134,8 @@ class HumanPlayer(AbstractPlayer):
     def select_building(self, buildings):
         print("Available buildings: ")
         [print(str(i) + ": " + str(building.type) + " for " + str(price)) for i, (building, price) in enumerate(buildings.items())]
-        building = input("Select a building (X for None): ")
-        if building.capitalize() == 'X' or building == '':
+        building = input("Select a building (Enter for None): ")
+        if building == '':
             return None
         selected = list(buildings.keys())[int(building)]
         print("You selected " + str(selected.type) + ".")
@@ -144,8 +144,8 @@ class HumanPlayer(AbstractPlayer):
     def select_plantation(self, plantations):
         print("Available plantations: ")
         [print(str(i) + ": " + str(plantation)) for i, plantation in enumerate(plantations)]
-        plantation = input("Select a plantation (X for None): ")
-        if plantation.capitalize() == 'X':
+        plantation = input("Select a plantation (Enter for None): ")
+        if plantation == '':
             return None
         selected = plantations[int(plantation)]
         print("You selected " + str(selected) + ".")
@@ -226,7 +226,7 @@ class HumanPlayer(AbstractPlayer):
     def select_crop_to_sale(self, crop_prices):
         print("Available crops to sale: ")
         [print(f"{i}: {crop} for {crop_prices[crop]} doublons") for i, crop in enumerate(crop_prices)]
-        crop = input("Select a crop to sale: ")
+        crop = input("Select a crop to sale: (press Enter for None)")
         if crop == "":
             return None
         selected = list(crop_prices.keys())[int(crop)]

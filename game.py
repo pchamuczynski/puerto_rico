@@ -11,6 +11,7 @@ class Game:
         self.rounds_played = 0
         self.removed_roles = []
         self.__refresh_plantations()
+        self.game_over_condition = "Unknown"
         
     def play(self):
         self.game_over = False
@@ -34,7 +35,8 @@ class Game:
             self.board.city.available_roles.extend(self.removed_roles)
             self.removed_roles = []
             
-        print(f"Game over!")
+        print(f"Game over by {self.game_over_condition}")
+        
         print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
         print(f"City: {self.board.city}")
         print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
@@ -103,7 +105,7 @@ class Game:
                 print(f"Available ships: {available_ships}")
 
                 for ship in self.board.city.ships:
-                    if ship.crop_type != None:
+                    if ship.crop_type != None and ship.amount != ship.capacity:
                         loaded.append(ship.crop_type)
                 shipments = []
                 
@@ -151,7 +153,11 @@ class Game:
                 if player_board.active(Building.BuildingType.HARBOR):
                     points += 1
                 player_board.export_points += points
+                self.board.city.available_points -= points
                 print(f"{player_name} sent {amount_to_load} {crop_type} to {ship_type} and got {points} points")
+                if self.board.city.available_points <= 0:
+                    self.game_over = True
+                    self.game_over_condition = "end of export points"
             
         for ship in self.board.city.ships:
             if ship.amount == ship.capacity:
@@ -217,6 +223,7 @@ class Game:
         new_workers = max(len(turn_order), empty_buildings)
         if self.board.city.total_workers < new_workers:
             self.game_over = True
+            self.game_over_condition = "end of workers"
         else:
             self.board.city.available_workers = new_workers
             self.board.city.total_workers -= new_workers
@@ -279,6 +286,7 @@ class Game:
                     self.board.city.total_workers -= 1
                 if player_board.free_building_spaces == 0:
                     self.game_over = True
+                    self.game_over_condition = "end of building spaces"
                 
             
     def __play_prospector(self, turn_order):
@@ -330,9 +338,7 @@ class Game:
                     self.board.city.available_crops[crop_type] -= crop_production
                     produced_crops.append(crop_type)
             if index == 0:
-                print(f"Selecting bonus from produced crops {produced_crops}")
                 bonus_selection = [crop for crop in produced_crops if self.board.city.available_crops[crop] > 0]
-                print(f"Bonus selection {bonus_selection}")
                 if len(bonus_selection) > 0:
                     bonus_crop = player.select_bonus_crop(bonus_selection)
                     print(f"{player_name} selected {bonus_crop} as his bonus crop")
@@ -356,6 +362,7 @@ players = {
     "Player2": RandomPlayer(),
     "Player3": RandomPlayer(),
     "Player4": RandomPlayer(),
+    "Player5": RandomPlayer(),
     # "Patryk": HumanPlayer("Patryk")
     
 }
