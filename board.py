@@ -337,6 +337,7 @@ class PlayerBoard:
         result += "Buildings: \n"
         for building, workers in self.buildings.items():
             result += f"\t{building.type} ({workers}/{building.max_workers})\n"
+        result += f"Total workers: {self.workers}\n"
         result += f"Unemployed workers: {self.unemployed_workers()}\n"
         result += f"Export points: {self.export_points}\n"
         result += "Crops:\n"
@@ -351,7 +352,7 @@ class PlayerBoard:
         return sum(self.buildings.values()) + sum(1 for plantation in self.plantations if plantation.active)
     
     def unemployed_workers(self):
-        return self.workers - sum(self.buildings.values()) - self.employed_workers()
+        return self.workers - self.employed_workers()
     
     def occupied_building_spaces(self):
         return sum(building.spaces_occupied for building in self.buildings.keys())
