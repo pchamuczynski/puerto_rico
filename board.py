@@ -86,6 +86,9 @@ class Crop:
         
         def __str__(self) -> str:
             return f"{self.name}"
+        
+        def __repr__(self) -> str:
+            return str(self)
     
     def __init__(self, type):
         self.type = type
@@ -126,8 +129,23 @@ class Plantation:
         return str(self)    
 
 class Ship:
-    def __init__(self, capacity):
-        self.capacity = capacity
+    class ShipType(IntEnum):
+        SHIP_4 = 4
+        SHIP_5 = 5
+        SHIP_6 = 6
+        SHIP_7 = 7
+        SHIP_8 = 8
+        WHARF = 13
+        
+        def __str__(self):
+            return f"{self.name}"
+        
+        def __repr__(self):
+            return str(self)
+    
+    def __init__(self, type):
+        self.type = type
+        self.capacity = int(type)
         self.crop_type = None
         self.amount = 0
 
@@ -215,11 +233,11 @@ class City:
     
     def __init_ships(self, number_of_players):
         if number_of_players == 3:
-            return [Ship(4), Ship(5), Ship(6)]
+            return [Ship(Ship.ShipType.SHIP_4), Ship(Ship.ShipType.SHIP_5), Ship(Ship.ShipType.SHIP_6)]
         elif number_of_players == 4:
-            return [Ship(5), Ship(6), Ship(7)]
+            return [Ship(Ship.ShipType.SHIP_5), Ship(Ship.ShipType.SHIP_6), Ship(Ship.ShipType.SHIP_7)]
         elif number_of_players == 5:
-            return [Ship(6), Ship(7), Ship(8)]
+            return [Ship(Ship.ShipType.SHIP_6), Ship(Ship.ShipType.SHIP_7), Ship(Ship.ShipType.SHIP_8)]
         else:
             return []
     
@@ -307,6 +325,8 @@ class PlayerBoard:
             Crop.CropType.COFFEE: 0
         }
         self.export_points = 0
+        self.small_production_buildings = [Building.BuildingType.SMALL_INDIGO_PLANT, Building.BuildingType.SMALL_SUGAR_MILL]
+        self.large_production_buildings = [Building.BuildingType.LARGE_INDIGO_PLANT, Building.BuildingType.LARGE_SUGAR_MILL, Building.BuildingType.TOBACCO_STORAGE, Building.BuildingType.COFFEE_ROASTER]
         
     def __str__(self) -> str:
         result = ""
@@ -327,8 +347,11 @@ class PlayerBoard:
     def inactive_plantations(self):
         return sum(1 for plantation in self.plantations if plantation.active == False)
     
+    def employed_workers(self):
+        return sum(self.buildings.values()) + sum(1 for plantation in self.plantations if plantation.active)
+    
     def unemployed_workers(self):
-        return self.workers - sum(self.buildings.values()) - sum(1 for plantation in self.plantations if plantation.active)
+        return self.workers - sum(self.buildings.values()) - self.employed_workers()
     
     def occupied_building_spaces(self):
         return sum(building.spaces_occupied for building in self.buildings.keys())
@@ -376,6 +399,31 @@ class PlayerBoard:
             plantation.active = False 
         for building in self.buildings:
             self.buildings[building] = 0
+            
+    def score(self):
+        score = 0
+        for building in self.buildings:
+            score += building.points
+            if building.type == Building.BuildingType.GUILD_HALL:
+                score += sum(1 for building in self.buildings if building.type in self.small_production_buildings)
+                score += sum(2 for building in self.buildings if building.type in self.large_production_buildings)
+            if building.type == Building.BuildingType.RESIDENCE:
+                if self.occupied_plantation_spaces() <= 9:
+                    score += 4
+                elif self.occupied_plantation_spaces() == 10:
+                    score += 5
+                elif self.occupied_plantation_spaces() == 11:
+                    score += 6
+                elif self.occupied_plantation_spaces() == 12:
+                    score += 7
+            if building.type == Building.BuildingType.FORTRESS:
+                score += int(self.employed_workers() / 3)
+            if building.type == Building.BuildingType.CUSTOMS_HOUSE:
+                score += int(self.export_points / 4)
+            if building.type == Building.BuildingType.CITY_HALL:
+                score += sum(1 for building in self.buildings if building.type not in self.small_production_buildings and building.type not in self.large_production_buildings)
+                    
+        return score + self.export_points
         
 
 class GameState:
@@ -404,10 +452,10 @@ class GameState:
             self.city.plantations_storage.remove(Plantation.PlantationType.CORN)
         elif(len(player_names) == 4):
             players = {
-                player_names[0]: PlayerBoard(3, Plantation.PlantationType.INDIGO),
-                player_names[1]: PlayerBoard(3, Plantation.PlantationType.INDIGO),
-                player_names[2]: PlayerBoard(3, Plantation.PlantationType.CORN),
-                player_names[3]: PlayerBoard(3, Plantation.PlantationType.CORN),
+                player_names[0]: PlayerBoard(3, Plantation(Plantation.PlantationType.INDIGO)),
+                player_names[1]: PlayerBoard(3, Plantation(Plantation.PlantationType.INDIGO)),
+                player_names[2]: PlayerBoard(3, Plantation(Plantation.PlantationType.CORN)),
+                player_names[3]: PlayerBoard(3, Plantation(Plantation.PlantationType.CORN)),
             }
             self.city.plantations_storage.remove(Plantation.PlantationType.INDIGO)
             self.city.plantations_storage.remove(Plantation.PlantationType.INDIGO)

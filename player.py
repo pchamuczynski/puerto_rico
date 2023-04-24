@@ -89,6 +89,28 @@ class RandomPlayer(AbstractPlayer):
         print(f"\tAI sells {choice} for {crop_prices[choice]} doublons.")
         return choice
         
+    def select_shipment(self, crops):
+        if len(crops) == 0:
+            return None
+        choice = random.choice(crops)
+        print(f"\tAI sends {choice[0]} to Europe on the ship {choice[1]}.")
+        return choice
+    
+    def select_crop_to_keep_in_warehouse(self, crops):
+        if len(crops) == 0:
+            return None
+        print(f"\tAI selects from {crops} to keep in the warehouse.")
+        choice = random.choice(list(crops))
+        print(f"\tAI keeps {choice} in the warehouse.")
+        return choice
+
+    def select_crop_to_keep_on_the_beach(self, crops):
+        if len(crops) == 0:
+            return None
+        print(f"\tAI selects from {crops} to keep on the beach.")
+        choice = random.choice(list(crops))
+        print(f"\tAI keeps {choice} on the beach.")
+        return choice
 
   
 class HumanPlayer(AbstractPlayer):
@@ -208,6 +230,31 @@ class HumanPlayer(AbstractPlayer):
         if crop == "":
             return None
         selected = list(crop_prices.keys())[int(crop)]
+        print(f"You selected {selected}.")
+        return selected
+    
+    def select_shipment(self, crops):
+        print("Available crops to send: ")
+        [print(f"{i}: {crop[0]} on the ship {crop[1]}") for i, crop in enumerate(crops)]
+        crop = input("Select a crop to send: ")
+        selected = crops[int(crop)]
+        print(f"You selected {selected[0]} on the ship {selected[1]}.")
+        return selected    
+
+    def select_crop_to_keep_in_warehouse(self, crops):
+        print("Available crops to keep in warehouse: ")
+        [print(f"{i}: {crop_type} ({crop_count})") for i, (crop_type, crop_count) in enumerate(crops.items())] 
+        choice = input("Select a crop to keep in warehouse: ")
+        selected = list(crops.keys())[int(choice)]
+        print(f"You selected {selected}.")
+        return selected                
+
+    def select_crop_to_keep_on_the_beach(self, crops):
+        if len(crops) == 0:
+            return None
+        [print(f"{i}: {crop_type} ({crop_count - 1})") for i, (crop_type, crop_count) in enumerate(crops.items())]
+        choice = input("Select a crop to keep on the beach: ")
+        selected = list(crops.keys())[int(choice)]
         print(f"You selected {selected}.")
         return selected
         

@@ -1,4 +1,4 @@
-from board import GameState, Role, Building, Plantation, Crop
+from board import *
 from player import RandomPlayer, HumanPlayer
 import random
 from copy import copy
@@ -16,8 +16,8 @@ class Game:
         self.game_over = False
         [player.board(self.board.players[player_name]) for player_name, player in self.players.items()]
 
-        while self.rounds_played < 10:
-        # while not self.game_over:
+        # while self.rounds_played < 10:
+        while not self.game_over:
             print(f"++++++++++++++++++++++++ Round {self.rounds_played + 1} +++++++++++++++++++++")
             print(f"Turn order: {self.turn_order}")
             print("City board")
@@ -33,6 +33,20 @@ class Game:
                 
             self.board.city.available_roles.extend(self.removed_roles)
             self.removed_roles = []
+            
+        print(f"Game over!")
+        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print(f"City: {self.board.city}")
+        print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        
+        for player_name in self.players:
+            print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            print(f"{player_name} board")
+            print(self.board.players[player_name])
+            print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
+        scores = {player_name : self.board.players[player_name].score() for player_name in self.players}        
+        print(f"Scores: {scores}")
            
     def __refresh_plantations(self):
         required_plantations = len(self.board.players) + 1
@@ -74,19 +88,127 @@ class Game:
             self.__play_craftsman(turn_order)
             
     def __play_captain(self, turn_order):
-        pass
-    
+        skipped = 0
+        print(f"Ships:")
+        [print(f"{ship.type} ({ship.amount}/{ship.capacity})") for ship in self.board.city.ships]
+        while skipped < len(turn_order):
+            skipped = 0
+            wharf_used = {player_name : False for player_name in turn_order}
+            captain_bonus = 1
+            for index, player_name in enumerate(turn_order):
+                print(f"Shipment for player {player_name}")
+                player_board = self.board.players[player_name]
+                loaded = []
+                available_ships = [ship for ship in self.board.city.ships if ship.amount < ship.capacity]
+                print(f"Available ships: {available_ships}")
+
+                for ship in self.board.city.ships:
+                    if ship.crop_type != None:
+                        loaded.append(ship.crop_type)
+                shipments = []
+                
+                for crop_type in player_board.crops:
+                    if player_board.crops[crop_type] == 0:
+                        continue
+                    for ship in available_ships:
+                        if ship.crop_type == crop_type:
+                            shipment = (crop_type, ship.type)
+                            print(f"appending shipment: {shipment} ({ship.crop_type} ({ship.amount}/{ship.capacity})) for player {player_name}")
+                            shipments.append(shipment)
+                        elif ship.crop_type == None and crop_type not in loaded:
+                            shipment = (crop_type, ship.type)
+                            print(f"appending shipment: {shipment} ({ship.crop_type} ({ship.amount}/{ship.capacity})) for player {player_name}")
+                            shipments.append(shipment)
+                        elif player_board.active(Building.BuildingType.WHARF) and not wharf_used[player_name]:
+                            shipment = (crop_type, Ship.ShipType.WHARF)
+                            print(f"appending shipment: {shipment} for player {player_name}")
+                            shipments.append(shipment)
+                            
+                if len(shipments) == 0:
+                    print(f"Player {player_name} has no shipments to send")
+                    skipped += 1
+                    continue
+                
+                print(f"{player_name} crops to send:")
+                [print(f"{crop_type} ({amount})") for crop_type, amount in player_board.crops.items()]
+                
+                (crop_type, ship_type) = self.players[player_name].select_shipment(shipments)
+                print(f"{player_name} selected {crop_type} on Ship {ship_type}")
+                amount_to_load = 0
+                if ship_type == Ship.ShipType.WHARF:
+                    wharf_used[player_name] = True
+                    amount_to_load = player_board.crops[crop_type]
+                else:
+                    ship = [ship for ship in self.board.city.ships if ship.type == ship_type][0]
+                    amount_to_load = min(player_board.crops[crop_type], ship.capacity - ship.amount)
+                    ship.amount += amount_to_load
+                    ship.crop_type = crop_type
+                player_board.crops[crop_type] -= amount_to_load
+                points = amount_to_load
+                if index == 0:
+                    points += captain_bonus
+                    captain_bonus = 0
+                if player_board.active(Building.BuildingType.HARBOR):
+                    points += 1
+                player_board.export_points += points
+                print(f"{player_name} sent {amount_to_load} {crop_type} to {ship_type} and got {points} points")
+            
+        for ship in self.board.city.ships:
+            if ship.amount == ship.capacity:
+                self.board.city.available_crops[ship.crop_type] += ship.amount
+                ship.crop_type = None
+                ship.amount = 0
+                
+        for player_name in turn_order:
+            if sum(amount for amount in self.board.players[player_name].crops.values()) != 0:
+                crops_to_keep = {crop_type : amount for crop_type, amount in self.board.players[player_name].crops.items() if amount > 0}
+                player_board = self.board.players[player_name]
+                warehouse_spaces = 0
+                if player_board.active(Building.BuildingType.LARGE_WAREHOUSE):
+                    warehouse_spaces += 2
+                if player_board.active(Building.BuildingType.SMALL_WAREHOUSE):
+                    warehouse_spaces += 1
+                if len(crops_to_keep) <= warehouse_spaces:
+                    continue
+                
+                crops_in_warehouse = []
+                while warehouse_spaces > 0:
+                    crop_type = self.players[player_name].select_crop_to_keep_in_warehouse(crops_to_keep)
+                    crops_to_keep.pop(crop_type)
+                    warehouse_spaces -= 1
+                    crops_in_warehouse.append(crop_type)
+
+                crop_on_the_beach = None
+                if len(crops_to_keep) == 1:
+                    crop_on_the_beach = list(crops_to_keep.keys())[0]
+                    
+                elif len(crops_to_keep) > 1:
+                    crop_on_the_beach = self.players[player_name].select_crop_to_keep_on_the_beach(crops_to_keep)
+                if crop_on_the_beach != None:
+                    print(f"{player_name} keeps 1 piece of {crop_on_the_beach} on the beach")
+                    
+                for crop_type, amount in player_board.crops.items():
+                    if amount == 0:
+                        continue
+                    if crop_type == crop_on_the_beach:
+                        self.board.city.available_crops[crop_type] += amount - 1
+                        player_board.crops[crop_type] = 1
+                    elif crop_type not in crops_in_warehouse:
+                        self.board.city.available_crops[crop_type] += amount
+                        player_board.crops[crop_type] = 0
+                        
     def __play_mayor(self, turn_order):
         print(f"{self.board.city.available_workers} workers to distribute among {len(turn_order)} players")
         for index, player_name in enumerate(turn_order):
             player_board = self.board.players[player_name]
-            available_workers = int(self.board.city.available_workers / len(turn_order))
+            new_workers = int(self.board.city.available_workers / len(turn_order))
             if self.board.city.available_workers % len(turn_order) > index :
-                available_workers += 1 
+                new_workers += 1 
             if index == 0:
-                available_workers += 1
+                new_workers += 1
                 self.board.city.total_workers -= 1
-            player_board.workers += available_workers
+            player_board.workers += new_workers
+            print(f"{player_name} gets {new_workers} workers")
             (plantations, buildings) = self.players[player_name].assign_workers(copy(player_board.plantations), copy(player_board.buildings), player_board.workers)
             player_board.plantations = plantations
             player_board.buildings = buildings
@@ -108,7 +230,8 @@ class Game:
             player_board = self.board.players[player_name]
             crops_to_sell = [crop_type for crop_type, count in player_board.crops.items() if count > 0]
             if not player_board.active(Building.BuildingType.OFFICE):
-                crops_to_sell = [crop_type for crop_type in crops_to_sell if crop_type not in self.board.city.market]
+                crops_to_sell = [crop_type for crop_type in crops_to_sell if crop_type not in market]
+                
             bonus = 0
             if index == 0:
                 bonus = 1
@@ -117,19 +240,17 @@ class Game:
             if player_board.active(Building.BuildingType.LARGE_MARKET):
                 bonus += 2
             
-            crops = {Crop(crop_type).type : Crop(crop_type).price + bonus for crop_type in crops_to_sell}
+            crops = {crop_type : Crop(crop_type).price + bonus for crop_type in crops_to_sell}
             if len(crops) != 0:
                 selected_crop = self.players[player_name].select_crop_to_sale(crops)
                 if selected_crop != None:
                     player_board.crops[selected_crop] -= 1
                     market.append(selected_crop)
-                    player_board.money += Crop(selected_crop).price
+                    player_board.money += crops[selected_crop]
         if len(market) == 4:
             for crop_type in market:
                 self.board.city.available_crops[crop_type] +=1
-            market = []
-            
-        
+            market = []                    
     
     def __play_builder(self, turn_order):
         for index, player_name in enumerate(turn_order):
@@ -168,11 +289,10 @@ class Game:
         for index, player_name in enumerate(turn_order):
             player_board = self.board.players[player_name]
             player = self.players[player_name]
-            if player_board.occupied_plantation_spaces == 12:
+            if player_board.occupied_plantation_spaces() >= 12:
                 continue
             plantations_to_choose = copy(self.board.city.available_plantations)
             if (index == 0 or player_board.active(Building.BuildingType.CONSTRUCTION_HUT)) and self.board.city.remaining_quarries > 0:
-                print("Addding quarry")
                 plantations_to_choose.append(Plantation.PlantationType.QUARRY)
             
             if player_board.active(Building.BuildingType.HACIENDA): 
@@ -236,7 +356,7 @@ players = {
     "Player2": RandomPlayer(),
     "Player3": RandomPlayer(),
     "Player4": RandomPlayer(),
-    "Patryk": HumanPlayer("Patryk")
+    # "Patryk": HumanPlayer("Patryk")
     
 }
 
