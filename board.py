@@ -327,9 +327,11 @@ class PlayerBoard:
         self.export_points = 0
         self.small_production_buildings = [Building.BuildingType.SMALL_INDIGO_PLANT, Building.BuildingType.SMALL_SUGAR_MILL]
         self.large_production_buildings = [Building.BuildingType.LARGE_INDIGO_PLANT, Building.BuildingType.LARGE_SUGAR_MILL, Building.BuildingType.TOBACCO_STORAGE, Building.BuildingType.COFFEE_ROASTER]
+        self.selected_role = None
         
     def __str__(self) -> str:
         result = ""
+        result += f"Selected role: {self.selected_role}\n"
         result += f"Money: {self.money}\n"
         result += "Plantations: \n"
         for plantation in sorted(self.plantations, key=attrgetter('active')):

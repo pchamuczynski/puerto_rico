@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+from display import *
 from board import *
 from player import RandomPlayer, HumanPlayer
 import random
@@ -12,20 +14,24 @@ class Game:
         self.removed_roles = []
         self.__refresh_plantations()
         self.game_over_condition = "Unknown"
+        self.display = GameScreen(players.keys())
         
     def play(self):
         self.game_over = False
         [player.board(self.board.players[player_name]) for player_name, player in self.players.items()]
 
-        # while self.rounds_played < 10:
         while not self.game_over:
             print(f"++++++++++++++++++++++++ Round {self.rounds_played + 1} +++++++++++++++++++++")
             print(f"Turn order: {self.turn_order}")
             print("City board")
             print(self.board.city)
+            for player in self.board.players.values():
+                player.selected_role = None
+                
             for player_name in self.turn_order:
                 # print(f"{player_name} board")
                 # print(self.board.players[player_name])
+                self.display.draw(self.board)
                 self.__play_turn(player_name)
             self.rounds_played += 1
             self.turn_order.append(self.turn_order.pop(0))
@@ -34,9 +40,7 @@ class Game:
                 
             self.board.city.available_roles.extend(self.removed_roles)
             self.removed_roles = []
-            
-        print(f"Game over by {self.game_over_condition}")
-        
+                    
         print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
         print(f"City: {self.board.city}")
         print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
@@ -48,7 +52,10 @@ class Game:
             print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
         scores = {player_name : self.board.players[player_name].score() for player_name in self.players}        
+        print(f"Game over after {self.rounds_played} rounds by {self.game_over_condition}")
         print(f"Scores: {scores}")
+        input("Press Enter to continue...")
+        return (self.rounds_played, scores)
            
     def __refresh_plantations(self):
         required_plantations = len(self.board.players) + 1
@@ -68,6 +75,8 @@ class Game:
         available_roles = self.board.city.available_roles
         player = self.players[player_name]
         role = player.select_role(available_roles)
+        self.board.players[player_name].selected_role = role
+        self.display.draw(self.board)
         self.board.players[player_name].money += role.coins
         role.coins = 0
         available_roles.remove(role)
@@ -355,17 +364,33 @@ class Game:
                 if len(produced_crops) == 5:
                     extra_money = 5
                 player_board.money += extra_money
-                
 
-players = {
-    "Player1": RandomPlayer(),
-    "Player2": RandomPlayer(),
-    "Player3": RandomPlayer(),
-    "Player4": RandomPlayer(),
-    "Player5": RandomPlayer(),
-    # "Patryk": HumanPlayer("Patryk")
+player_names = [
+    "Player1",
+    "Player2",
+    "Player3",
+    "Player4",
+    "Player5",
+    # "Patryk"
+]
+
+
+total_rounds = 0
+total_scores = {player_name :0 for player_name in player_names}
+
+def player_gen(player_name):
+    if player_name == "Patryk":
+        return HumanPlayer(player_name)
+    return RandomPlayer()
+
+games_to_play = 1
+for i in range(games_to_play):
+    players = { player_name : player_gen(player_name) for player_name in player_names}
+    (rounds, scores) = Game(players).play()
+    total_rounds += rounds
+    for player, score in scores.items():
+        total_scores[player] += score
     
-}
+print(f"Average rounds: {total_rounds / games_to_play}")
 
-game = Game(players)
-game.play()
+[print(f"Average score: {total_scores[player_name] / games_to_play}") for player_name in players.keys()]
